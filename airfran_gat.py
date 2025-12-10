@@ -1,15 +1,4 @@
 import os
-# os.environ["WANDB__SERVICE"] = "disabled"
-# os.environ["WANDB_START_METHOD"] = "thread"
-# os.environ["WANDB_DISABLE_CODE"] = "true"
-# os.environ["WANDB_MODE"] = "offline"
-# os.environ["PYTHONUTF8"] = "1"
-# os.environ["LC_ALL"] = "C.UTF-8"
-# os.environ["LANG"] = "C.UTF-8"
-# os.environ["WANDB__SERVICE_WAIT"] = "false"
-# os.environ["WANDB__SERVICE"] = "false"
-# os.environ["WANDB__SERVICE_MODE"] = "disabled"
-
 import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
@@ -271,3 +260,4 @@ if __name__ == "__main__":
     train_dataset = AirfRANSGATDataset(root, task='full', train=True,  k=6)
     val_dataset   = AirfRANSGATDataset(root, task='full', train=False, k=6)
     run_training(train_dataset, val_dataset)
+
