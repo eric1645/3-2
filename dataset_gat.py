@@ -8,7 +8,7 @@ from airfrans.simulation import Simulation
 from tqdm import tqdm
 
 class AirfRANSGATDataset(Dataset):
-    def __init__(self, root, task='scarce', train=True, k=6):
+    def __init__(self, root, task='scarce', train=True, k=4):
         self.root = root
         self.task = task
         self.train = train
