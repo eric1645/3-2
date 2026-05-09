@@ -1,4 +1,5 @@
 import torch
+import time
 from torch import nn
 from torch_geometric.loader import DataLoader
 
@@ -7,7 +8,7 @@ from model_gat import SimpleGAT
 
 def evaluate():
     root = r"C:\airfran\Dataset"
-    task = "scarce"
+    task = "full"
 
     model_path = "checkpoints/gat_best.pt"
     norm_path  = "checkpoints/normalizer.pt"
@@ -33,7 +34,7 @@ def evaluate():
 
     model = SimpleGAT(
         in_channels=7,
-        hidden_channels=16,
+        hidden_channels=8,
         out_channels=4,
         heads=4,
         dropout=0.1,
@@ -45,18 +46,59 @@ def evaluate():
     criterion = nn.MSELoss()
     mse = 0.0
 
+    total_infer_time = 0.0
+
+    all_pred = []
+    all_gt   = []
+
     with torch.no_grad():
+        if device.type == "cuda":
+            dummy = next(iter(loader)).to(device)
+            dummy.x = encode_x(dummy.x)
+            for _ in range(20):
+                _ = model(dummy.x, dummy.edge_index)
+            torch.cuda.synchronize()
+
         for batch in loader:
             batch = batch.to(device)
             batch.x = encode_x(batch.x)
 
-            pred = model(batch.x, batch.edge_index)
-            pred_phys = decode_y(pred)
+            if device.type == "cuda":
+                torch.cuda.synchronize()
+            t0 = time.perf_counter()
 
-            mse += criterion(pred, batch.y).item()
+            pred = model(batch.x, batch.edge_index)
+
+            if device.type == "cuda":
+                torch.cuda.synchronize()
+            t1 = time.perf_counter()
+
+            total_infer_time += (t1 - t0)
+
+            pred_phys = decode_y(pred)          
+            gt_phys   = batch.y                 
+
+            all_pred.append(pred_phys.cpu())
+            all_gt.append(gt_phys.cpu())
+
+            mse += criterion(pred, (gt_phys - y_mean) / y_std).item() 
+        
+
 
     mse /= len(loader)
-    print("Test MSE:", mse)
+    avg_infer_time = total_infer_time / len(loader)
+
+    save_path = "checkpoints/gat_test_predictions.pt"
+    torch.save(
+        {"pred": all_pred, "gt": all_gt},
+        save_path
+    )
+    print("Saved GAT predictions to:", save_path)
+
+
+    print(f"Test MSE            : {mse:.6e}")
+    print(f"Avg inference time  : {avg_infer_time*1000:.3f} ms / sample")
+    print(f"Total inference time: {total_infer_time:.3f} s")
 
 
 if __name__ == "__main__":
