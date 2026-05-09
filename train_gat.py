@@ -3,14 +3,15 @@ import math
 import torch
 from torch import nn
 from torch_geometric.loader import DataLoader
-
+import matplotlib.pyplot as plt
+import time
 from dataset_gat import AirfRANSGATDataset
 from model_gat import SimpleGAT
 from dataset_gat import Normalizer
 
 def train():
     root = r"C:\airfran\Dataset"
-    task = "scarce"         
+    task = "full"         
     batch_size = 4
     epochs = 50
     lr = 5e-4
@@ -60,7 +61,7 @@ def train():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = SimpleGAT(
         in_channels=7,
-        hidden_channels=16,
+        hidden_channels=8,
         out_channels=4,
         heads=4,
         dropout=0.1,
@@ -70,7 +71,11 @@ def train():
     criterion = nn.MSELoss()
 
     best_val = math.inf
+    train_start_time = time.perf_counter()
+    train_losses = []
+    val_losses = []
     for epoch in range(1, epochs + 1):
+        epoch_start = time.perf_counter()
         model.train()
         train_loss = 0.0
 
@@ -84,6 +89,7 @@ def train():
             train_loss += loss.item()
 
         train_loss /= len(train_loader)
+        train_losses.append(train_loss)
 
         model.eval()
         val_loss = 0.0
@@ -93,8 +99,16 @@ def train():
                 pred = model(batch.x, batch.edge_index)
                 val_loss += criterion(pred, batch.y).item()
         val_loss /= len(val_loader)
+        val_losses.append(val_loss)
 
-        print(f"[{epoch:03d}] Train {train_loss:.6f} | Val {val_loss:.6f}")
+        epoch_time = time.perf_counter() - epoch_start
+
+        print(
+            f"[{epoch:03d}] "
+            f"Train {train_loss:.6f} | "
+            f"Val {val_loss:.6f} | "
+            f"Time {epoch_time:.2f}s"
+        )
 
         if val_loss < best_val:
             best_val = val_loss
@@ -102,6 +116,18 @@ def train():
 
     print("Model saved to:", model_path)
     print("Normalizer saved to:", norm_path)
+
+    plt.figure(figsize=(8,5))
+
+    plt.plot(train_losses, label='Loss')
+
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+
+    plt.legend()
+    plt.grid(True)
+
+    plt.show()
 
 if __name__ == "__main__":
     train()
