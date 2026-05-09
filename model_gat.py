@@ -14,8 +14,12 @@ class SimpleGAT(nn.Module):
                              heads=heads, concat=True, dropout=dropout)
         self.norm2 = nn.LayerNorm(hidden_channels * heads)
 
-        self.conv3 = GATConv(hidden_channels * heads, out_channels,
-                             heads=1, concat=False)
+        self.conv3 = GATConv(hidden_channels * heads, hidden_channels,
+                             heads=heads, concat=True, dropout=dropout)
+        self.norm3 = nn.LayerNorm(hidden_channels * heads)
+
+        self.out = GATConv(hidden_channels * heads, out_channels,
+                           heads=1, concat=False)
 
         self.act = nn.ReLU()
         self.drop = nn.Dropout(dropout)
@@ -23,6 +27,5 @@ class SimpleGAT(nn.Module):
     def forward(self, x, edge_index):
         x = self.drop(self.act(self.norm1(self.conv1(x, edge_index))))
         x = self.drop(self.act(self.norm2(self.conv2(x, edge_index))))
-        x = self.drop(self.act(self.norm2(self.conv2(x, edge_index))))
-        x = self.drop(self.act(self.norm2(self.conv2(x, edge_index))))
-        return self.conv3(x, edge_index)
+        x = self.drop(self.act(self.norm3(self.conv3(x, edge_index))))
+        return self.out(x, edge_index)
